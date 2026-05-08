@@ -1,0 +1,168 @@
+clear;
+close all;
+
+%% Run Simulation
+cdma_simulation(8, 1, 1e-6);
+
+%% =====================================================
+%% Function to Generate Walsh Matrix
+%% =====================================================
+
+function W = generate_walsh_matrix(n)
+
+    % Base case
+    if n == 1
+
+        W = [
+            1   1;
+            1  -1
+        ];
+
+        return;
+
+    end
+
+    % Recursive generation
+    smaller_matrix = generate_walsh_matrix(n - 1);
+
+    top = [
+        smaller_matrix  smaller_matrix
+    ];
+
+    bottom = [
+        smaller_matrix  -smaller_matrix
+    ];
+
+    W = [
+        top;
+        bottom
+    ];
+
+end
+
+%% =====================================================
+%% CDMA Simulation Function
+%% =====================================================
+
+function cdma_simulation(num_users, intended_bit, noise_floor)
+
+    %% Generate Walsh Matrix
+    walsh_matrix = generate_walsh_matrix(log2(num_users));
+
+    disp('Walsh Code Matrix:');
+    disp(walsh_matrix);
+    fprintf('\n');
+
+    %% Select Intended User
+    intended_index = randi([1 num_users]);
+
+    fprintf( ...
+        'Intended User: %d\n', ...
+        intended_index ...
+    );
+
+    fprintf( ...
+        'Transmitting Bit: %d\n\n', ...
+        intended_bit ...
+    );
+
+    %% Spread Signal
+    transmitted_signal = ...
+        intended_bit * walsh_matrix(intended_index, :);
+
+    %% Generate Gaussian Noise
+    noise = normrnd( ...
+        0, ...
+        sqrt(noise_floor), ...
+        [1 num_users] ...
+    );
+
+    %% Add Noise
+    noisy_signal = transmitted_signal + noise;
+
+    disp('Received Signal (with noise):');
+    disp(noisy_signal);
+    fprintf('\n');
+
+    %% Display Table Header
+    fprintf( ...
+        'User\tType\t\tCorrelation\tSNR (dB)\n' ...
+    );
+
+    %% Decode Each User
+    for i = 1:num_users
+
+        % Correlation / Despreading
+        correlation = ...
+            dot(noisy_signal, walsh_matrix(i, :)) ...
+            / num_users;
+
+        %% Signal Power
+        signal_power = ...
+            (intended_bit * (i == intended_index))^2;
+
+        %% Noise Power
+        if i == intended_index
+
+            % Intended user affected only by noise
+            noise_power = var(noise);
+
+        else
+
+            % Interference from intended user
+            interference = ...
+                intended_bit * ...
+                dot( ...
+                    walsh_matrix(intended_index, :), ...
+                    walsh_matrix(i, :) ...
+                ) / num_users;
+
+            noise_power = ...
+                interference^2 + var(noise);
+
+        end
+
+        %% SNR Calculation
+        if noise_power > 0
+
+            snr = signal_power / noise_power;
+
+        else
+
+            snr = Inf;
+
+        end
+
+        if isinf(snr) || snr <= 0
+
+            snr_db = 0;
+
+        else
+
+            snr_db = 10 * log10(snr);
+
+        end
+
+        %% User Type
+        if i == intended_index
+
+            user_type = 'Intended';
+
+        else
+
+            user_type = 'Unintended';
+
+        end
+
+        %% Display Result
+        fprintf( ...
+            '%d\t%-12s\t%+.4f\t\t%.2f\n', ...
+            i, ...
+            user_type, ...
+            correlation, ...
+            snr_db ...
+        );
+
+    end
+
+end

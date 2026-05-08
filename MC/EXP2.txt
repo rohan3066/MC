@@ -1,0 +1,66 @@
+clc;
+clear;
+close all;
+
+%% Input Parameters
+channels_900 = 10;
+channels_1900 = 10;
+
+total_channels = channels_900 + channels_1900;
+
+subscribers = 15000;
+
+R = 15;          % Cell radius in km
+N = 7;           % Cluster size
+
+%% Frequency Reuse Distance
+D = sqrt(3*N)*R;
+
+fprintf('Total Channels = %d\n', total_channels);
+fprintf('Cluster Size = %d\n', N);
+fprintf('Reuse Distance = %.2f km\n', D);
+
+%% Channel Allocation
+channels_per_cell = total_channels/N;
+
+fprintf('Channels per Cell = %.2f\n', channels_per_cell);
+
+%% Assume 21 cells
+cells = 21;
+
+%% Capacity Estimation
+users_per_channel = 30;
+
+capacity = total_channels * users_per_channel * cells;
+
+fprintf('Estimated Capacity = %d users\n', capacity);
+
+%% Dynamic Allocation Simulation
+traffic = randi([50 100],1,cells);
+
+allocated = min(traffic, total_channels*users_per_channel);
+
+figure;
+bar(traffic);
+title('Traffic Demand per Cell');
+xlabel('Cell Number');
+ylabel('Users');
+
+figure;
+bar(allocated);
+title('Allocated Users per Cell');
+xlabel('Cell Number');
+ylabel('Allocated Capacity');
+
+%% Call Drop Estimation
+call_drop_rate = max(0, (traffic - allocated)./traffic);
+
+figure;
+plot(call_drop_rate,'LineWidth',2);
+title('Call Drop Rate');
+xlabel('Cell Number');
+ylabel('Drop Rate');
+
+avg_drop = mean(call_drop_rate);
+
+fprintf('Average Call Drop Rate = %.4f\n', avg_drop);
